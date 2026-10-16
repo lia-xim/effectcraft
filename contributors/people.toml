@@ -84,3 +84,7 @@ display_name = "onlymoein"
 real_name = "Matthias Ramahi"
 display_name = "Matthias Ramahi"
 sync_github_name = false
+
+[people.arnav-hiwarkar]
+display_name = "arnav-hiwarkar"
+sync_github_name = false

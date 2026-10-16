@@ -142,6 +142,7 @@ pub(super) const UI: &[(&str, &str)] = &[
     ("EffectCraft didn't quit normally last time.", "EffectCraft wurde zuletzt nicht ordnungsgemäß beendet."),
     ("Effects & Presets options", "Optionen für Effekte & Vorgaben"),
     ("Copy Presets Folder Path", "Pfad zum Vorgabenordner kopieren"),
+    ("Copy Source Path", "Quellpfad kopieren"),
     ("Effects: {}", "Effekte: {}"),
     ("Empty folder", "Leerer Ordner"),
     ("Enable Depth of Field", "Schärfentiefe aktivieren"),
