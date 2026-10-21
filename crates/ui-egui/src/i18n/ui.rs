@@ -4532,6 +4532,7 @@ mod tests {
     /// Literals that stay as they are: a unit or a separator reads the same in every language.
     const UNITS: &[&str] = &[" px", "%", "·", "s", "ms", "°", "fps", " bpc", " mm", " s", " %", " pixels"];
 
+    /// Combine every panel catalog so shared validation also covers newly registered languages.
     fn catalogs() -> Vec<(&'static str, &'static str)> {
         JAPANESE
             .iter()
@@ -4546,6 +4547,7 @@ mod tests {
             .collect()
     }
 
+    /// German rows match the Chinese source keys, translate values and retain unknown user text.
     #[test]
     fn german_panels_translate_values_and_preserve_user_content() {
         let german_keys: Vec<_> = super::super::de::UI.iter().map(|(en, _)| *en).collect();
@@ -4554,6 +4556,8 @@ mod tests {
         set_current("de");
         assert_eq!(tr("Composition Name:"), "Kompositionsname:");
         assert_eq!(tr("Label"), "Beschriftung");
+        assert_eq!(tr("Light"), "Hell");
+        assert_eq!(tr("Light Type"), "Lichttyp");
         assert_eq!(tr("Footage"), "Footage");
         assert_eq!(tr("Enable Expression"), "Expression aktivieren");
         assert_eq!(tr("The render queue is empty."), "Die Renderliste ist leer.");
@@ -4587,6 +4591,7 @@ mod tests {
 
     /// A row that translates nothing, repeats a source string, or changes the number of values the
     /// English source carries is a bug in the catalog itself.
+    /// Catalog rows are unique subsets of the shared sources and retain placeholder counts.
     #[test]
     fn catalogs_are_unique_and_keep_the_english_shape() {
         let hans: Vec<&str> = SIMPLIFIED_CHINESE.iter().map(|(en, _)| *en).collect();

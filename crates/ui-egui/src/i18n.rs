@@ -172,6 +172,8 @@ pub(crate) fn context_item(command: &str, params: &serde_json::Value, source: &s
         .map_or_else(|| tr(source).to_string(), |(_, _, translated)| (*translated).to_string())
 }
 
+/// Translate a generated menu entry, preserving computed user names and using history-specific
+/// undo/redo text only for languages that provide it.
 pub(crate) fn entry(app: &EffectcraftApp, e: &MenuEntry, shown: String) -> String {
     // The generated Effect menu's entries label themselves with the effect's registry name; the
     // catalog replaces it with the interface language's (#821). The entry keeps its command and
@@ -184,19 +186,24 @@ pub(crate) fn entry(app: &EffectcraftApp, e: &MenuEntry, shown: String) -> Strin
     }
     // Undo/redo names come from the history, so they are formatted per language here rather than
     // looked up in a catalog. An English (or untranslated) interface keeps the shown label.
-    let (undo, no_undo, redo, no_redo) = match language(app) {
-        "ja" => ("取り消し", "取り消しできません", "やり直し", "やり直しできません"),
-        "zh-hans" => ("撤销", "无可撤销的操作", "重做", "无可重做的操作"),
-        "zh-hant" => ("復原", "沒有可復原的操作", "重做", "沒有可重做的操作"),
-        "uk" => ("Скасувати", "Немає дій для скасування", "Повторити", "Немає дій для повторення"),
-        "es" => ("Deshacer", "No se puede deshacer", "Rehacer", "No se puede rehacer"),
-        "pt-br" => ("Desfazer", "Não há nada para desfazer", "Refazer", "Não há nada para refazer"),
-        "cs" => ("Zpět", "Není co vrátit", "Znovu", "Není co zopakovat"),
-        _ => return shown,
+    let overrides = match language(app) {
+        "ja" => Some(("取り消し", "取り消しできません", "やり直し", "やり直しできません")),
+        "zh-hans" => Some(("撤销", "无可撤销的操作", "重做", "无可重做的操作")),
+        "zh-hant" => Some(("復原", "沒有可復原的操作", "重做", "沒有可重做的操作")),
+        "uk" => Some(("Скасувати", "Немає дій для скасування", "Повторити", "Немає дій для повторення")),
+        "es" => Some(("Deshacer", "No se puede deshacer", "Rehacer", "No se puede rehacer")),
+        "pt-br" => Some(("Desfazer", "Não há nada para desfazer", "Refazer", "Não há nada para refazer")),
+        "cs" => Some(("Zpět", "Není co vrátit", "Znovu", "Není co zopakovat")),
+        _ => None,
     };
+    if let Some((undo, no_undo, redo, no_redo)) = overrides {
+        match e.command.as_str() {
+            "edit.undo" => return app.session.history.undo.last().map(|u| format!("{undo} {}", u.0)).unwrap_or_else(|| no_undo.into()),
+            "edit.redo" => return app.session.history.redo.last().map(|u| format!("{redo} {}", u.0)).unwrap_or_else(|| no_redo.into()),
+            _ => {}
+        }
+    }
     match e.command.as_str() {
-        "edit.undo" => app.session.history.undo.last().map(|u| format!("{undo} {}", u.0)).unwrap_or_else(|| no_undo.into()),
-        "edit.redo" => app.session.history.redo.last().map(|u| format!("{redo} {}", u.0)).unwrap_or_else(|| no_redo.into()),
         "window.panel" => {
             let prefix = format!("{}: ", e.label);
             if let Some(name) = shown.strip_prefix(&prefix) {
@@ -6712,11 +6719,10 @@ mod tests {
         assert_eq!(entry(&app, &redo, "Redo Text Čeština".into()), "Znovu Text Čeština");
     }
 
+    /// Both direct and generated reveal labels follow the platform file manager, while filenames
+    /// and identical labels belonging to other commands stay untouched.
     #[test]
     fn german_reveal_labels_follow_the_platform_file_manager() {
-        // As `czech_…` and `ukrainian_…` do. Asserted through `label`, not `entry`: `entry`
-        // returns the English for German, Russian and French, which have catalogues but are
-        // not wired into the menus (see the undo/redo match in `entry` and `supported`).
         let mut app = EffectcraftApp::new(effectcraft_engine::Session::default());
         app.session.execute("prefs.set", json!({"key": "general.language", "value": "de"})).unwrap();
         for command in ["file.revealInFinder", "layer.revealInFinder"] {
@@ -6726,6 +6732,8 @@ mod tests {
                 ("Reveal in File Manager", "Im Dateimanager anzeigen"),
             ] {
                 assert_eq!(label(&app, command, source), translated, "{command} / {source}");
+                let e = MenuEntry { command: command.into(), label: source.into(), params: json!({}), shortcut: None, alt_shortcuts: vec![] };
+                assert_eq!(entry(&app, &e, source.into()), translated, "generated {command} / {source}");
                 // Another command keeps a label that merely looks like one of these.
                 assert_eq!(label(&app, "file.openRecent", source), source);
             }
@@ -6733,6 +6741,29 @@ mod tests {
         }
     }
 
+    /// Generated German menu entries use the shared catalog without translating user content;
+    /// existing Japanese history overrides still apply.
+    #[test]
+    fn generated_german_entries_reach_the_catalog_and_preserve_names() {
+        let mut app = EffectcraftApp::new(effectcraft_engine::Session::default());
+        app.session.execute("prefs.set", json!({"key": "general.language", "value": "de"})).unwrap();
+        let mut e = MenuEntry { command: "file.newProject".into(), label: "New Project".into(), params: json!({}), shortcut: None, alt_shortcuts: vec![] };
+        assert_eq!(entry(&app, &e, "New Project".into()), "Neues Projekt");
+        e.command = "window.panel".into();
+        e.label = "Composition".into();
+        assert_eq!(entry(&app, &e, "Composition: File".into()), "Komposition: File");
+        e.command = "file.openRecent".into();
+        e.label = "File".into();
+        assert_eq!(entry(&app, &e, "File".into()), "File");
+        e.command = "edit.undo".into();
+        e.label = "Undo".into();
+        assert_eq!(entry(&app, &e, "Undo File".into()), "Undo File");
+        app.session.execute("prefs.set", json!({"key": "general.language", "value": "ja"})).unwrap();
+        app.session.history.undo.clear();
+        assert_eq!(entry(&app, &e, "Can't Undo".into()), "取り消しできません");
+    }
+
+    /// Time-reversal and editable-style labels describe their actual commands in German.
     #[test]
     fn german_menu_labels_name_what_their_command_does() {
         let mut app = EffectcraftApp::new(effectcraft_engine::Session::default());
@@ -6744,6 +6775,7 @@ mod tests {
         assert_eq!(label(&app, "layer.style.convertToEditable", "Convert to Editable Styles"), "In bearbeitbare Stile umwandeln");
     }
 
+    /// German command labels use consistent Expression, tracking and reveal terminology.
     #[test]
     fn german_uses_one_word_per_term() {
         let german: Vec<&str> = GERMAN.iter().map(|(_, _, de)| *de).collect();

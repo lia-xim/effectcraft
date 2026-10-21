@@ -216,7 +216,7 @@ pub(super) const UI: &[(&str, &str)] = &[
     ("Leave all attributes in \"{}\"", "Alle Attribute in „{}“ belassen"),
     ("Licence: {}", "Lizenz: {}"),
     ("Ligatures", "Ligaturen"),
-    ("Light", "Licht"),
+    ("Light", "Hell"),
     ("Light Theme", "Helles Design"),
     ("Light Type", "Lichttyp"),
     ("Lighter", "Heller"),

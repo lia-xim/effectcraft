@@ -24,6 +24,7 @@ fn footage_paths(s: &effectcraft_engine::Session) -> Vec<(u64, String, bool)> {
     v
 }
 
+/// Replacing one missing item locates its moved siblings, and undo restores the original paths.
 #[test]
 fn replacing_a_missing_file_relinks_the_others_that_moved_with_it() {
     let root: PathBuf = std::env::temp_dir().join(format!("ec-host-relink-{}", std::process::id()));

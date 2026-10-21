@@ -9,6 +9,7 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use serde_json::json;
 
+/// Send a primary click through the frame loop, then allow the dialog to settle.
 fn click_at(h: &mut Harness<'_, EffectcraftApp>, at: egui::Pos2) {
     h.input_mut().events.push(Event::PointerMoved(at));
     for pressed in [true, false] {
@@ -18,11 +19,13 @@ fn click_at(h: &mut Harness<'_, EffectcraftApp>, at: egui::Pos2) {
     h.run_steps(3);
 }
 
+/// Click the centre of a registered automation element without relying on its translated label.
 fn click(h: &mut Harness<'_, EffectcraftApp>, id: &str) {
     let e = h.state().auto.find(id).unwrap_or_else(|| panic!("missing {id}")).clone();
     click_at(h, pos2(e.rect[0] + e.rect[2] / 2.0, e.rect[1] + e.rect[3] / 2.0));
 }
 
+/// Open and scroll the real language picker before selecting the visible language label.
 fn language_choice(h: &mut Harness<'_, EffectcraftApp>, label: &str) {
     click(h, "settings.general.language");
     let picker = h.state().auto.find("settings.general.language").unwrap();
@@ -40,13 +43,16 @@ fn language_choice(h: &mut Harness<'_, EffectcraftApp>, label: &str) {
     click_at(h, at);
 }
 
+/// Invoke an application command and advance enough frames to expose its dialog.
 fn invoke(h: &mut Harness<'_, EffectcraftApp>, id: &str, params: serde_json::Value) {
     let ctx = h.ctx.clone();
     menus::invoke(h.state_mut(), &ctx, id, params).unwrap();
     h.run_steps(3);
 }
 
+/// Extract the text actually painted in the latest frame, including nested shape groups.
 fn texts(h: &Harness<'_, EffectcraftApp>) -> Vec<String> {
+    /// Visit a painted shape tree and append each text galley's source string.
     fn collect(shape: &Shape, out: &mut Vec<String>) {
         match shape {
             Shape::Text(t) => out.push(t.galley.job.text.clone()),
@@ -65,6 +71,7 @@ fn texts(h: &Harness<'_, EffectcraftApp>) -> Vec<String> {
     out
 }
 
+/// Switching English/German updates the live interface and survives reopening the saved store.
 #[test]
 fn language_picker_switches_live_and_reloads_german_in_a_new_app() {
     let store = Arc::new(MemoryConfig::default());
@@ -98,6 +105,7 @@ fn language_picker_switches_live_and_reloads_german_in_a_new_app() {
     assert!(texts(&h).iter().any(|s| s == "Sprache:"));
 }
 
+/// German composition labels leave automation IDs and user-chosen project names unchanged.
 #[test]
 fn german_composition_form_keeps_ids_and_project_names() {
     let mut s = Session::default();

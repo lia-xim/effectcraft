@@ -82,6 +82,7 @@ mod imp {
         &T
     }
 
+    /// Register a socket with its own lock and, for streams, a separate shutdown handle.
     fn add(s: Sock) -> u32 {
         let wake = match &s {
             Sock::Stream { s, .. } => s.try_clone().ok(),
@@ -148,6 +149,8 @@ mod imp {
         result.and(restored)
     }
 
+    /// Send bounded chunks until complete, closed or past one shared deadline, waiting briefly
+    /// only when the nonblocking socket reports backpressure.
     fn write_nonblocking(s: &mut TcpStream, data: &[u8], limit: Duration, closed: &AtomicBool) -> std::io::Result<()> {
         let end = Instant::now() + limit;
         let mut remaining = data;
@@ -198,6 +201,7 @@ mod imp {
         Ok(())
     }
 
+    /// Dispatch a native socket operation, returning JSON errors for invalid handles or I/O failures.
     pub(super) fn run(op: &str, id: u32, p: &J) -> J {
         let utf8 = p.get("encoding").and_then(J::as_str).is_some_and(|e| e.eq_ignore_ascii_case("utf-8") || e.eq_ignore_ascii_case("utf8"));
         match op {
@@ -356,6 +360,7 @@ mod tests {
         (host, stop)
     }
 
+    /// Open a test connection with a small send buffer so a stalled peer exerts backpressure.
     fn open(host: &str) -> u32 {
         let r = run("open", 0, &json!({"host": host, "timeout": 5}));
         let id = r["id"].as_u64().unwrap_or_else(|| panic!("open {host}: {r}")) as u32;
