@@ -208,7 +208,6 @@ pub(super) const UI: &[(&str, &str)] = &[
     ("Latest auto-save: {}", "Letzte automatische Sicherung: {}"),
     ("Layer", "Ebene"),
     ("Layer controls", "Ebenensteuerungen"),
-    ("Layer {}", "Ebene {}"),
     ("Layer:", "Ebene:"),
     ("Layer: {}", "Ebene: {}"),
     ("Layer Styles", "Ebenenstile"),

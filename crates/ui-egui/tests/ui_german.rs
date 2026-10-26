@@ -37,6 +37,7 @@ fn language_choice(h: &mut Harness<'_, EffectcraftApp>, label: &str) {
         delta: egui::vec2(0.0, if label == "Deutsch" { -300.0 } else { 300.0 }),
         modifiers: Default::default(),
         phase: egui::TouchPhase::Move,
+        source: egui::MouseWheelSource::Wheel,
     });
     h.run_steps(20);
     let at = h.query_by_label(label).unwrap().rect().center();
